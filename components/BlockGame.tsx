@@ -711,10 +711,16 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         
         setClearingRows(linesToClearRow);
         setClearingCols(linesToClearCol);
-        
-        // Store newShapes now to use in the timeout closure
+
+        // CRITICAL FIX: Calculate remaining shapes and set state BEFORE setTimeout
+        // This prevents race conditions where the closure captures stale state
         const remainingShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
         const needsNewShapes = remainingShapes.length === 0;
+
+        // Update shapes state immediately to prevent race condition
+        setShapes(remainingShapes);
+        setScore(prev => prev + points);
+        setSelectedShapeIdx(null);
 
         setTimeout(() => {
              const finalGrid = newGrid.map(row => [...row]);
@@ -726,10 +732,12 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
              // Generate new shapes BEFORE checking game over if needed
              if (needsNewShapes) {
                  generateShapes();
-             } else {
-                 checkGameOver(finalGrid, remainingShapes);
              }
+             // Note: Game over check is now handled by useEffect watching shapes/grid changes
         }, 400);
+
+        // Early return since we already updated state above
+        return;
       } else {
         if (streakCount > 0) addFloatingText(c, r, "Streak Brutt!", '#94a3b8', 0.8);
         setStreakCount(0);
@@ -737,23 +745,24 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         addFloatingText(c, r, `+${points}`, '#ffffff', 0.8);
         setGrid(newGrid);
         const remainingShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
+
+        // Update state before any async operations
+        setShapes(remainingShapes);
+        setScore(prev => prev + points);
+        setSelectedShapeIdx(null);
+
         if (remainingShapes.length === 0) {
             // Generate shapes immediately instead of delayed check
             setTimeout(generateShapes, 300);
-        } else {
-            checkGameOver(newGrid, remainingShapes);
         }
+        // Note: Game over check handled by useEffect
+        return;
       }
-
-      setScore(prev => prev + points);
-      const newShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
-      setShapes(newShapes);
-      setSelectedShapeIdx(null);
     } else {
         playErrorSound();
         triggerShake('light');
     }
-  }, [isGameOver, rescueMode, activePowerUp, selectedShapeIdx, shapes, grid, canPlaceShape, comboCount, streakCount, executePowerUp]);
+  }, [isGameOver, rescueMode, activePowerUp, selectedShapeIdx, shapes, grid, canPlaceShape, comboCount, streakCount, executePowerUp, generateShapes]);
 
   const checkGameOver = (currentGrid: GridCell[][], currentShapes: Shape[]) => {
       // Clear any existing timeout to prevent double triggers
@@ -785,9 +794,9 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
                 return false;
              };
 
-             let canMove = false;
-             for(const s of currentShapes) if(canFitShapeWithRotation(s, currentGrid)) canMove = true;
-             if (!canMove && holdShape) if(canFitShapeWithRotation(holdShape, currentGrid)) canMove = true;
+             // OPTIMIZED: Use Array.some() for early exit when a valid move is found
+             const canMove = currentShapes.some(s => canFitShapeWithRotation(s, currentGrid))
+                          || (holdShape ? canFitShapeWithRotation(holdShape, currentGrid) : false);
 
              if(!canMove) {
                  const hasPowerUps = Object.values(powerUps).some((val: number) => val > 0);

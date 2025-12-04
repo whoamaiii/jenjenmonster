@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import PackOpener from './components/PackOpener';
 import BlockGame from './components/BlockGame';
 import Collection from './components/Collection';
 import Navigation from './components/Navigation';
+import ErrorBoundary from './components/ErrorBoundary';
 import { ViewState, MonsterCard } from './types';
 import { playSoftClick, playSwitchSound, playSuccessSound, playMagicalSparkle, playPopSound, resumeAudioContext, musicManager } from './utils/audio';
 import { storageService } from './services/storageService';
@@ -292,20 +293,57 @@ const App: React.FC = () => {
   const xpNeeded = getXpForNextLevel(level);
   const xpPercentage = Math.min(100, (currentXP / xpNeeded) * 100);
 
+  // PERFORMANCE: Memoize snowflake/particle configurations to avoid recreating on every render
+  const snowflakeStyles = useMemo(() =>
+    Array.from({ length: 30 }, () => ({
+      left: Math.random() * 100 + 'vw',
+      animationDuration: (Math.random() * 5 + 5) + 's',
+      animationDelay: (Math.random() * 5) + 's',
+      opacity: Math.random() * 0.5 + 0.3
+    }))
+  , []);
+
+  const levelUpParticleStyles = useMemo(() =>
+    Array.from({ length: 30 }, () => ({
+      left: `${Math.random() * 100}%`,
+      top: '-5%',
+      backgroundColor: ['#fff', '#a7f3d0', '#fecaca', '#fde047'][Math.floor(Math.random() * 4)],
+      animationDuration: `${2 + Math.random() * 3}s`,
+      animationDelay: `${Math.random() * 2}s`
+    }))
+  , []);
+
   // --- RENDER ---
 
-  if (showIntroGift && isLoaded) {
+  // Loading screen while data is being fetched
+  if (!isLoaded) {
+    return (
+      <div className="fixed inset-0 bg-[#0f0c29] flex flex-col items-center justify-center z-[100]">
+        <div className="relative flex flex-col items-center">
+          {/* Animated Christmas ornament */}
+          <div className="text-6xl mb-6 animate-bounce">🎄</div>
+
+          {/* Loading text */}
+          <h1 className="text-white font-magic text-xl mb-4">JenJen Monsters</h1>
+
+          {/* Spinner */}
+          <div className="w-10 h-10 border-4 border-white/20 border-t-pink-500 rounded-full animate-spin"></div>
+
+          {/* Loading hint */}
+          <p className="text-white/40 text-xs mt-4 font-cute">Laster inn...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showIntroGift) {
       return (
+          <ErrorBoundary>
           <div className="fixed inset-0 bg-[#0f0c29] flex flex-col items-center justify-center z-[100] overflow-hidden">
-             {/* Snow Background (CSS Driven) */}
+             {/* Snow Background (CSS Driven) - Using memoized styles */}
              <div className="absolute inset-0 pointer-events-none">
-                 {[...Array(30)].map((_, i) => (
-                    <div key={i} className="snowflake" style={{
-                        left: Math.random() * 100 + 'vw',
-                        animationDuration: (Math.random() * 5 + 5) + 's',
-                        animationDelay: (Math.random() * 5) + 's',
-                        opacity: Math.random() * 0.5 + 0.3
-                    }}></div>
+                 {snowflakeStyles.map((style, i) => (
+                    <div key={i} className="snowflake" style={style}></div>
                  ))}
              </div>
              
@@ -325,10 +363,12 @@ const App: React.FC = () => {
                  </button>
              </div>
           </div>
+          </ErrorBoundary>
       )
   }
 
   return (
+    <ErrorBoundary>
     <div className="antialiased h-full w-full flex flex-col relative font-body text-white select-none overflow-hidden">
       {/* Background is constant */}
       <div className="absolute inset-0 bg-[conic-gradient(at_top_left,_var(--tw-gradient-stops))] from-slate-900 via-purple-950 to-slate-900 z-0"></div>
@@ -508,19 +548,13 @@ const App: React.FC = () => {
       {/* Level Up Modal */}
       {showLevelUp && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl animate-fade-in overflow-hidden p-4">
-             {/* ... Level Up Modal Content (Same as before) ... */}
+             {/* Particles - Using memoized styles */}
              <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                 {[...Array(30)].map((_, i) => (
-                    <div 
-                        key={i} 
+                 {levelUpParticleStyles.map((style, i) => (
+                    <div
+                        key={i}
                         className="absolute w-2 h-2 rounded-full animate-fall"
-                        style={{
-                            left: `${Math.random() * 100}%`,
-                            top: `-5%`,
-                            backgroundColor: ['#fff', '#a7f3d0', '#fecaca', '#fde047'][Math.floor(Math.random() * 4)], // Pastels for snow
-                            animationDuration: `${2 + Math.random() * 3}s`,
-                            animationDelay: `${Math.random() * 2}s`
-                        }}
+                        style={style}
                     ></div>
                  ))}
              </div>
@@ -593,6 +627,7 @@ const App: React.FC = () => {
         }
       `}</style>
     </div>
+    </ErrorBoundary>
   );
 };
 

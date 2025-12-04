@@ -448,9 +448,9 @@ const CardComponent: React.FC<CardProps> = ({ card, index, isRevealed, preloaded
   const holoClass = getHoloClass(card.rarity);
   const rarityGradient = getRarityGradient(card.rarity);
   
-  const getElementColor = (type: ElementType) => {
-    return 'bg-white/5 backdrop-blur-md border-white/10';
-  };
+  // Glass effect background for card face - consistent across all element types
+  // Note: Element-specific styling is applied via the type-* classes from ELEMENT_COLORS
+  const cardFaceGlassStyle = 'bg-white/5 backdrop-blur-md border-white/10';
 
   const translatedRarity = RARITY_TRANSLATIONS[card.rarity] || card.rarity;
 
@@ -507,7 +507,7 @@ const CardComponent: React.FC<CardProps> = ({ card, index, isRevealed, preloaded
         </div>
 
         {/* --- CARD FRONT --- */}
-        <div className={`absolute w-full h-full backface-hidden rotate-y-180 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden border border-white/20 text-white flex flex-col ${getElementColor(card.type)} ${card.isShiny ? 'shiny-active' : ''}`}>
+        <div className={`absolute w-full h-full backface-hidden rotate-y-180 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden border border-white/20 text-white flex flex-col ${cardFaceGlassStyle} ${card.isShiny ? 'shiny-active' : ''}`}>
             
             {/* Background Layers */}
             <div className="absolute inset-0 bg-slate-900/80 z-0"></div>
