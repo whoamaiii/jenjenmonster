@@ -8,19 +8,21 @@ interface NavProps {
 
 const Navigation: React.FC<NavProps> = ({ currentView, onChange }) => {
   
-  const getIcon = (view: ViewState) => {
+  const getIcon = (view: ViewState): string => {
     switch(view) {
       case 'GAME': return '🎮';
       case 'SHOP': return '🛍️';
       case 'COLLECTION': return '📒';
+      default: return '❓';
     }
   };
 
-  const getLabel = (view: ViewState) => {
+  const getLabel = (view: ViewState): string => {
     switch(view) {
       case 'GAME': return 'Spill';
       case 'SHOP': return 'Butikk';
       case 'COLLECTION': return 'Samling';
+      default: return view;
     }
   };
 

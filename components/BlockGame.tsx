@@ -753,7 +753,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         playErrorSound();
         triggerShake('light');
     }
-  }, [isGameOver, rescueMode, activePowerUp, selectedShapeIdx, shapes, grid, canPlaceShape, comboCount, streakCount, powerUps, coins, executePowerUp]);
+  }, [isGameOver, rescueMode, activePowerUp, selectedShapeIdx, shapes, grid, canPlaceShape, comboCount, streakCount, executePowerUp]);
 
   const checkGameOver = (currentGrid: GridCell[][], currentShapes: Shape[]) => {
       // Clear any existing timeout to prevent double triggers

@@ -122,7 +122,7 @@ const App: React.FC = () => {
           // Check if yesterday (allow variance for timezone weirdness, basically if diff is < 48 hours)
           const isYesterday = (todayStart - lastClaimStart) <= oneDay;
           
-          let currentStreak = isYesterday ? streak : streak; // For Advent Calendar, we don't break the streak easily, we just advance the door
+          let currentStreak = isYesterday ? streak : 0; // Reset streak if more than 24 hours since last claim
           
           if (currentStreak >= 24) currentStreak = 0; // Reset after Christmas
           
@@ -147,9 +147,13 @@ const App: React.FC = () => {
       if (currentXP > prevXpRef.current) {
           setXpChanged(true);
           const t = setTimeout(() => setXpChanged(false), 500);
+          prevXpRef.current = currentXP; // Update ref only when XP increases
           return () => clearTimeout(t);
       }
-      prevXpRef.current = currentXP;
+      // Also update if XP decreased (e.g., after level up reset)
+      if (currentXP < prevXpRef.current) {
+          prevXpRef.current = currentXP;
+      }
   }, [currentXP]);
 
   const toggleMusic = () => {
@@ -393,7 +397,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 relative overflow-y-auto overflow-x-hidden z-10 pb-32 pt-[calc(var(--sat)+3.5rem)] no-scrollbar">
+      <main data-scroll-container className="flex-1 relative overflow-y-auto overflow-x-hidden z-10 pb-32 pt-[calc(var(--sat)+3.5rem)] no-scrollbar">
         {/* We keep all views mounted to preserve state (game progress, preloaded packs) */}
         
         <div className={`w-full h-full transition-opacity duration-300 ${currentView === 'GAME' ? 'opacity-100 pointer-events-auto relative z-10' : 'opacity-0 pointer-events-none absolute inset-0 z-0'}`}>

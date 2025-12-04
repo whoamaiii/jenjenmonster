@@ -1,5 +1,5 @@
 
-import { MonsterCard, PowerUpType, SavedGameSession } from '../types';
+import { MonsterCard, PowerUpType, SavedGameSession, SavedLayout } from '../types';
 
 const DB_NAME = 'JenJenMonstersDB';
 const DB_VERSION = 2; 
@@ -404,11 +404,11 @@ export const storageService = {
 
   // --- COLLECTION LAYOUTS ---
 
-  saveCollectionLayouts(layouts: any[]) {
+  saveCollectionLayouts(layouts: SavedLayout[]) {
     localStorage.setItem('jenjen_collection_layouts', JSON.stringify(layouts));
   },
 
-  loadCollectionLayouts(): any[] {
+  loadCollectionLayouts(): SavedLayout[] {
     try {
       const saved = localStorage.getItem('jenjen_collection_layouts');
       return saved ? JSON.parse(saved) : [];

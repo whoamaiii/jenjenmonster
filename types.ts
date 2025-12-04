@@ -1,4 +1,4 @@
-import React from 'react';
+import type { CSSProperties } from 'react';
 
 export enum ElementType {
   Fire = 'Fire',
@@ -70,7 +70,7 @@ export interface Particle {
   r: number;
   c: number;
   color: string;
-  style: React.CSSProperties;
+  style: CSSProperties;
   createdAt?: number;
 }
 
@@ -83,4 +83,15 @@ export interface SavedGameSession {
   streakCount: number;
   rescueMode: boolean;
   isGameOver: boolean;
+}
+
+// Collection Layout Types
+export type SortOption = 'NEWEST' | 'OLDEST' | 'RARITY_DESC' | 'RARITY_ASC' | 'NAME_ASC' | 'NAME_DESC' | 'FAVORITES';
+export type FilterOption = ElementType | Rarity | 'ALL' | 'FAVORITES' | 'NEW';
+
+export interface SavedLayout {
+  id: string;
+  name: string;
+  filter: FilterOption;
+  sort: SortOption;
 }
