@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>JenJen Monsters</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&family=Inter:wght@400;500;600&family=Cinzel:wght@700&display=swap');
+      
+      :root {
+        --font-cute: 'Quicksand', sans-serif;
+        --font-body: 'Inter', sans-serif;
+        --font-magic: 'Cinzel', serif;
+        --sat: env(safe-area-inset-top);
+        --sab: env(safe-area-inset-bottom);
+      }
+
+      body {
+        font-family: var(--font-body);
+        background-color: #020617; /* Darker Winter Night */
+        overflow: hidden; /* App-like feel, no bounce */
+        /* iOS specific touches */
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+        user-select: none;
+        touch-action: manipulation; /* Improves tap response */
+        overscroll-behavior-y: none; /* Prevents pull-to-refresh/bounce */
+      }
+
+      /* Smooth Scrolling */
+      html {
+        scroll-behavior: smooth;
+        overscroll-behavior-y: none;
+      }
+
+      #root {
+        height: 100dvh; /* Dynamic viewport height */
+        width: 100vw;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
+      /* Custom Scrollbar - Hidden for mobile feel */
+      ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+      }
+      
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      /* 3D Card Flip Utilities */
+      .perspective-1000 { perspective: 1000px; }
+      .transform-style-3d { transform-style: preserve-3d; }
+      .backface-hidden { backface-visibility: hidden; }
+      .rotate-y-180 { transform: rotateY(180deg); }
+
+      /* Custom Easings */
+      .ease-spring { transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+      /* Soft Holographic Effects */
+      .holo-overlay {
+        position: absolute;
+        inset: 0;
+        border-radius: 1.5rem;
+        pointer-events: none;
+        z-index: 20;
+        transition: opacity 0.3s ease;
+        mix-blend-mode: overlay;
+      }
+      
+      /* Interactive Holographic Glimmer */
+      .holo-glimmer {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          circle at var(--holo-x, 50%) var(--holo-y, 50%),
+          rgba(255, 255, 255, 0.6) 0%,
+          rgba(255, 230, 255, 0.3) 20%,
+          rgba(220, 255, 255, 0.2) 40%,
+          transparent 70%
+        );
+        mix-blend-mode: color-dodge;
+        pointer-events: none;
+        z-index: 15;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      
+      /* Only enable hover effects on devices that support hover (not touch) */
+      @media (hover: hover) {
+        .group:hover .holo-glimmer {
+          opacity: 1;
+        }
+      }
+
+      .holo-rare {
+        background: linear-gradient(105deg, transparent 20%, rgba(130, 200, 255, 0.4) 45%, rgba(255, 255, 255, 0.6) 50%, transparent 80%);
+        background-size: 200% 200%;
+        background-position: var(--holo-x, 50%) var(--holo-y, 50%);
+      }
+
+      .holo-legendary {
+        background: radial-gradient(circle at var(--holo-x, 50%) var(--holo-y, 50%), rgba(255, 223, 128, 0.6) 0%, transparent 60%),
+                    linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.4) 50%, transparent 60%);
+        filter: brightness(1.1);
+      }
+
+      .holo-mythical {
+        background: conic-gradient(from 0deg at 50% 50%, rgba(255,0,150,0.1), rgba(0,255,255,0.1), rgba(255,0,150,0.1));
+        filter: contrast(1.1) hue-rotate(0deg);
+        animation: aurora-spin 4s linear infinite;
+      }
+      
+      @keyframes aurora-spin { 100% { filter: contrast(1.1) hue-rotate(360deg); } }
+
+      /* Snow Animation - Improved for Winter Theme */
+      .snowflake {
+        position: absolute;
+        top: -10px;
+        background: radial-gradient(circle, white 30%, transparent 80%);
+        border-radius: 50%;
+        opacity: 0.8;
+        pointer-events: none;
+        animation: fall linear infinite;
+        z-index: 0;
+        filter: drop-shadow(0 0 2px white);
+      }
+      @keyframes fall {
+        to { transform: translateY(105vh) rotate(360deg); }
+      }
+
+      /* Liquid Button Shine */
+      .liquid-shine {
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
+        transform: skewX(-20deg);
+        transition: 0.5s;
+      }
+      .group:hover .liquid-shine {
+        left: 150%;
+        transition: 0.7s ease-in-out;
+      }
+
+      /* ADVANCED SHINY EFFECTS */
+      .shiny-rainbow-gradient {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          115deg, 
+          transparent 0%, 
+          transparent 30%, 
+          rgba(255, 105, 180, 0.3) 40%, /* Pink */
+          rgba(0, 255, 255, 0.3) 50%,   /* Cyan */
+          rgba(255, 215, 0, 0.3) 60%,   /* Gold */
+          transparent 70%, 
+          transparent 100%
+        );
+        background-size: 250% 250%;
+        background-position: 0% 0%;
+        mix-blend-mode: color-dodge;
+        pointer-events: none;
+        z-index: 25;
+        transition: opacity 0.3s ease;
+        opacity: 0.3; /* Subtle when idle */
+      }
+      
+      @media (hover: hover) {
+        .shiny-active:hover .shiny-rainbow-gradient {
+          opacity: 1;
+          animation: shiny-swipe 2.5s ease-in-out infinite;
+        }
+      }
+      
+      @keyframes shiny-swipe {
+        0% { background-position: 0% 0%; }
+        50% { background-position: 100% 100%; }
+        100% { background-position: 0% 0%; }
+      }
+
+      .shiny-glitter {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(white 1.5px, transparent 1.5px);
+        background-size: 30px 30px;
+        opacity: 0;
+        z-index: 24;
+        transition: opacity 0.3s;
+      }
+      
+      @media (hover: hover) {
+        .shiny-active:hover .shiny-glitter {
+          opacity: 0.5;
+          animation: twinkle 3s infinite linear;
+        }
+      }
+      
+      @keyframes twinkle { 
+        0% { background-position: 0 0; }
+        100% { background-position: 30px 30px; } 
+      }
+
+      /* UPDATED SHINY BURST */
+      .shiny-particle-burst {
+        position: absolute;
+        inset: -50%;
+        width: 200%;
+        height: 200%;
+        pointer-events: none;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .shiny-particle-burst .particle-ray {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 2px;
+        height: 40%;
+        background: linear-gradient(to top, transparent, rgba(255,255,255,0.8), transparent);
+        transform-origin: bottom center;
+        opacity: 0;
+        animation: burst-ray 1s ease-out forwards;
+      }
+
+      .shiny-particle-burst .particle-dot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #fff, var(--dot-color, gold));
+        transform: translate(-50%, -50%);
+        opacity: 0;
+        animation: burst-dot 1.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+        box-shadow: 0 0 10px var(--dot-color, gold);
+      }
+      
+      @keyframes burst-ray {
+        0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot)) scaleY(0.1); }
+        20% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--rot)) scaleY(1.5); }
+        100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--rot)) scaleY(0) translateY(-50px); }
+      }
+      
+      @keyframes burst-dot {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+        10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.1); }
+      }
+
+      /* Shimmer Loading */
+      @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+      }
+      .animate-shimmer { animation: shimmer 2s infinite linear; }
+
+      /* Grid Game Animations */
+      @keyframes popIn {
+        0% { transform: scale(0); opacity: 0; }
+        60% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .animate-pop-in { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+      @keyframes modalZoom {
+        0% { transform: scale(0.8); opacity: 0; }
+        50% { opacity: 1; }
+        70% { transform: scale(1.02); }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .animate-modal-zoom { animation: modalZoom 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+      /* --- NEW GAME ANIMATIONS --- */
+      
+      /* Row Flash on clear */
+      @keyframes flashRow {
+        0% { background-color: white; transform: scale(1.05); box-shadow: 0 0 20px white; }
+        100% { background-color: transparent; transform: scale(1); box-shadow: none; }
+      }
+      .animate-flash { animation: flashRow 0.4s ease-out forwards; }
+
+      /* Screen Shake */
+      @keyframes shake {
+        0% { transform: translate(1px, 1px) rotate(0deg); }
+        10% { transform: translate(-1px, -2px) rotate(-1deg); }
+        20% { transform: translate(-3px, 0px) rotate(1deg); }
+        30% { transform: translate(3px, 2px) rotate(0deg); }
+        40% { transform: translate(1px, -1px) rotate(1deg); }
+        50% { transform: translate(-1px, 2px) rotate(-1deg); }
+        60% { transform: translate(-3px, 1px) rotate(0deg); }
+        70% { transform: translate(3px, 1px) rotate(-1deg); }
+        80% { transform: translate(-1px, -1px) rotate(1deg); }
+        90% { transform: translate(1px, 2px) rotate(0deg); }
+        100% { transform: translate(1px, -2px) rotate(-1deg); }
+      }
+      .animate-shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+
+      @keyframes shake-heavy {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        10% { transform: translate(-5px, -5px) rotate(-3deg); }
+        20% { transform: translate(5px, 5px) rotate(3deg); }
+        30% { transform: translate(-5px, 5px) rotate(-3deg); }
+        40% { transform: translate(5px, -5px) rotate(3deg); }
+        50% { transform: translate(-3px, 0px) rotate(-1deg); }
+        60% { transform: translate(3px, 1px) rotate(0deg); }
+        70% { transform: translate(-3px, 1px) rotate(1deg); }
+        80% { transform: translate(3px, -1px) rotate(-1deg); }
+        90% { transform: translate(-1px, 2px) rotate(0deg); }
+        100% { transform: translate(0, 0) rotate(0deg); }
+      }
+      .animate-shake-heavy { animation: shake-heavy 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+      
+      /* Floating Text */
+      @keyframes floatUp {
+        0% { transform: translateY(0) scale(0.5); opacity: 0; }
+        20% { transform: translateY(-15px) scale(1.3); opacity: 1; }
+        80% { transform: translateY(-50px) scale(1); opacity: 1; }
+        100% { transform: translateY(-60px) scale(0.8); opacity: 0; }
+      }
+      .animate-float-up { animation: floatUp 1.2s ease-out forwards; }
+
+      /* Magical Float Up */
+      @keyframes floatUpMagical {
+        0% { transform: translate(-50%, 0) scale(0.5) rotate(-5deg); opacity: 0; filter: blur(2px); }
+        20% { transform: translate(-50%, -30px) scale(1.3) rotate(3deg); opacity: 1; filter: blur(0px); }
+        50% { transform: translate(-50%, -50px) scale(1.1) rotate(-3deg); opacity: 1; }
+        100% { transform: translate(-50%, -100px) scale(0.8) rotate(0deg); opacity: 0; filter: blur(2px); }
+      }
+      .animate-float-magical { animation: floatUpMagical 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+
+      .text-magical-glow {
+        text-shadow: 
+            0 0 5px rgba(255,255,255,0.8), 
+            0 0 10px currentColor, 
+            0 0 20px currentColor,
+            2px 2px 0px rgba(0,0,0,0.3);
+      }
+
+      /* Crumble/Vanish for blocks */
+      @keyframes crumble {
+        0% { transform: scale(1); opacity: 1; filter: brightness(2); }
+        100% { transform: scale(0); opacity: 0; }
+      }
+      .animate-crumble { animation: crumble 0.3s ease-in forwards; }
+
+      /* Particle Explosion */
+      @keyframes particleMove {
+        0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+      }
+      .particle {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 2px; /* slightly square for block game */
+        pointer-events: none;
+        animation: particleMove 0.8s ease-out forwards;
+        z-index: 100;
+        box-shadow: 0 0 6px currentColor;
+      }
+
+      /* Ghost Pulse */
+      @keyframes ghostPulse {
+        0% { opacity: 0.3; transform: scale(0.95); }
+        50% { opacity: 0.6; transform: scale(1.0); }
+        100% { opacity: 0.3; transform: scale(0.95); }
+      }
+      .animate-ghost { animation: ghostPulse 2s infinite ease-in-out; }
+
+      /* Combo Pulse */
+      @keyframes comboPulse {
+        0% { transform: scale(1); filter: brightness(1); }
+        50% { transform: scale(1.2); filter: brightness(1.5); }
+        100% { transform: scale(1); filter: brightness(1); }
+      }
+      .animate-combo { animation: comboPulse 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+      
+      /* Badge Bounce */
+      @keyframes bounceSubtle {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+      }
+      .animate-bounce-subtle { animation: bounceSubtle 2s infinite ease-in-out; }
+
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* --- New Premium Card Back Designs --- */
+      .card-back-premium {
+        background: radial-gradient(circle at 50% 30%, #581c87 0%, #2e1065 40%, #0f172a 100%);
+        box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+      }
+      
+      .card-back-pattern {
+        background-image: 
+          repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px),
+          repeating-linear-gradient(-45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 10px);
+      }
+
+      .card-logo-ring-outer {
+        background: conic-gradient(from 0deg, #4c1d95, #c026d3, #4c1d95);
+        animation: slow-spin 10s linear infinite;
+      }
+
+      @keyframes slow-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      /* Pack Shake Animation - UPDATED FOR MORE ENERGY */
+      @keyframes shake-pack {
+        0% { transform: rotate(0deg) scale(1); }
+        10% { transform: rotate(-8deg) scale(1.05); }
+        20% { transform: rotate(8deg) scale(1.05); }
+        30% { transform: rotate(-8deg) scale(1.05); }
+        40% { transform: rotate(8deg) scale(1.05); }
+        50% { transform: rotate(-5deg) scale(1.1); }
+        60% { transform: rotate(5deg) scale(1.1); }
+        70% { transform: rotate(0deg) scale(1.15); }
+        100% { transform: rotate(0deg) scale(1); }
+      }
+      .animate-shake-pack { animation: shake-pack 0.6s ease-in-out infinite; }
+      
+      /* Sparkle Particle for Pack Opening */
+      @keyframes sparkle-out {
+        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); opacity: 0; }
+      }
+      .sparkle-particle {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        border-radius: 50%;
+        pointer-events: none;
+        animation: sparkle-out 1.2s ease-out infinite;
+        z-index: 5;
+      }
+      
+      /* Pulse Ring */
+      @keyframes pulse-ring {
+        0% { transform: scale(0.8); opacity: 0.5; }
+        100% { transform: scale(1.5); opacity: 0; }
+      }
+      .animate-pulse-ring {
+        animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+      }
+
+      /* --- CYBER FANTASY GAME UI UPGRADE --- */
+      
+      /* The Grid Board Container */
+      .cyber-grid-container {
+        background: rgba(15, 23, 42, 0.8);
+        border-radius: 20px;
+        padding: 10px;
+        box-shadow: 
+            0 0 0 1px rgba(255,255,255,0.1),
+            0 0 30px rgba(79, 70, 229, 0.2), /* Glow behind board */
+            inset 0 0 60px rgba(0,0,0,0.5);
+        backdrop-filter: blur(20px);
+        position: relative;
+        overflow: hidden;
+      }
+      
+      /* Cyber Grid Background Pattern - More Neon */
+      .cyber-grid-bg {
+         position: absolute;
+         inset: 0;
+         background-image: 
+           linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+           linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+         background-size: 40px 40px;
+         mask-image: radial-gradient(circle at center, black 40%, transparent 90%);
+         pointer-events: none;
+         z-index: 0;
+      }
+
+      /* 3D Gem Block - Upgraded */
+      .gem-block-3d {
+        position: relative;
+        border-radius: 10px;
+        /* Richer Depth */
+        box-shadow: 
+          inset 0 2px 3px rgba(255,255,255,0.6), 
+          inset 0 -3px 4px rgba(0,0,0,0.4),
+          0 4px 8px rgba(0,0,0,0.3);
+        transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s;
+        z-index: 10;
+      }
+      
+      .gem-block-3d::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.2) 100%);
+        pointer-events: none;
+      }
+      
+      /* Inner facet - gives the 'gem' look */
+      .gem-block-3d-inner {
+        position: absolute;
+        inset: 3px;
+        border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.2);
+        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent 70%);
+        pointer-events: none;
+        box-shadow: inset 0 0 6px rgba(0,0,0,0.1);
+      }
+      
+      /* Ghost Style */
+      .gem-ghost {
+        opacity: 0.6;
+        box-shadow: 0 0 10px currentColor, inset 0 0 10px currentColor;
+        border: 2px solid currentColor;
+        background-image: none !important; 
+        background-color: transparent !important;
+        animation: ghostPulse 1.5s infinite ease-in-out;
+      }
+      .gem-ghost .gem-block-3d-inner {
+        display: none;
+      }
+      
+      /* Selected/Dragging Shape Glow */
+      .gem-block-3d.glow {
+         box-shadow: 0 0 15px currentColor;
+      }
+
+      /* Empty Grid Cell - Glassier */
+      .cyber-cell-empty {
+        background: rgba(255,255,255,0.03);
+        border-radius: 8px;
+        position: relative;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.02);
+      }
+      .cyber-cell-empty::after {
+        content: '';
+        position: absolute;
+        top: 50%; left: 50%;
+        width: 4px; height: 4px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      /* Shape Dock Improvements */
+      .dock-shape-wrapper {
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        padding: 8px;
+        border-radius: 16px;
+      }
+      .dock-shape-wrapper:hover:not(.selected) {
+        transform: translateY(-5px);
+        background: rgba(255,255,255,0.05);
+      }
+      .dock-shape-wrapper.selected {
+        transform: translateY(-25px) scale(1.2);
+        background: radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, transparent 70%);
+        filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.6));
+        z-index: 50;
+      }
+      
+      /* Neon Text Glows */
+      .neon-text-pink { text-shadow: 0 0 10px rgba(244, 114, 182, 0.8), 0 0 20px rgba(244, 114, 182, 0.4); }
+      .neon-text-blue { text-shadow: 0 0 10px rgba(56, 189, 248, 0.8), 0 0 20px rgba(56, 189, 248, 0.4); }
+      
+      /* Shape Dock Floating */
+      @keyframes float-dock {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+      .animate-float-dock { animation: float-dock 4s ease-in-out infinite; }
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+      }
+    }
+    </script>
+  </head>
+  <body class="text-white selection:bg-pink-500 selection:text-white">
+    <div id="root"></div>
+  </body>
+</html>
