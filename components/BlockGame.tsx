@@ -104,7 +104,7 @@ const MemoizedGrid = memo(({ grid, onHover, onClick, getCellStatus, selectedShap
                   style={style}
                 >
                    {(status === 'filled') && <div className="gem-block-3d-inner"></div>}
-                   {status === 'clearing' && <div className="absolute inset-0 bg-white z-10 animate-crumble rounded-[4px]"></div>}
+                   {status === 'clearing' && <div className="absolute inset-0 bg-white z-40 animate-crumble rounded-[4px]"></div>}
                 </div>
               )
             })
