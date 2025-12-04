@@ -70,7 +70,7 @@ interface GridProps {
   grid: GridCell[][];
   onHover: (r: number, c: number) => void;
   onClick: (r: number, c: number) => void;
-  getCellStatus: (r: number, c: number) => string;
+  getCellStatus: (r: number, c: number, hoveredCell: {r: number, c: number} | null) => string;
   selectedShape: Shape | null;
   hoveredCell: {r: number, c: number} | null;
   activePowerUp: PowerUpType | null;
@@ -81,7 +81,7 @@ const MemoizedGrid = memo(({ grid, onHover, onClick, getCellStatus, selectedShap
         <div className="grid grid-cols-8 gap-1 w-full h-full relative z-10">
           {grid.map((row, r) => (
             row.map((cell, c) => {
-              const status = getCellStatus(r, c);
+              const status = getCellStatus(r, c, hoveredCell);
               let style: React.CSSProperties = {};
               if (status === 'filled' && cell) style = { backgroundColor: cell };
               else if (status === 'ghost-valid' && selectedShape) style = { backgroundColor: selectedShape.color };
@@ -89,7 +89,7 @@ const MemoizedGrid = memo(({ grid, onHover, onClick, getCellStatus, selectedShap
               else if (status === 'powerup-target') style = { backgroundColor: '#fff', animation: 'pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite', zIndex: 25 };
 
               return (
-                <div 
+                <div
                   key={`${r}-${c}`}
                   onMouseEnter={() => onHover(r, c)}
                   onClick={() => onClick(r, c)}
@@ -164,6 +164,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
   const [streakCount, setStreakCount] = useState(0);
   
   const floatingTextIdRef = useRef(0);
+  const floatingTextTimeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const shakeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gameOverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
@@ -405,10 +406,11 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
     // Only reset if session is loaded AND we truly have empty shapes in active game,
     // AND it's not just a momentary empty state (e.g. valid game over or just cleared).
     // If score is 0 and no shapes, it's likely a fresh start needed.
-    if (isSessionLoaded && isActive && shapes.length === 0 && score === 0 && !isGameOver) {
+    // Also check holdShape to prevent false reset when user holds their last shape.
+    if (isSessionLoaded && isActive && shapes.length === 0 && score === 0 && !isGameOver && !holdShape) {
       resetGame();
     }
-  }, [isActive, shapes.length, isSessionLoaded, score, isGameOver]);
+  }, [isActive, shapes.length, isSessionLoaded, score, isGameOver, holdShape]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -422,6 +424,25 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
     return () => clearInterval(interval);
   }, []);
 
+  // Cleanup all timeouts on unmount to prevent memory leaks and state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      // Clear floating text timeouts
+      floatingTextTimeoutsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+      floatingTextTimeoutsRef.current.clear();
+      // Clear game over timeout
+      if (gameOverTimeoutRef.current) {
+        clearTimeout(gameOverTimeoutRef.current);
+        gameOverTimeoutRef.current = null;
+      }
+      // Clear shake timeout
+      if (shakeTimeoutRef.current) {
+        clearTimeout(shakeTimeoutRef.current);
+        shakeTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   const triggerShake = (type: 'light' | 'heavy') => {
      setShakeType(type);
      if (shakeTimeoutRef.current) clearTimeout(shakeTimeoutRef.current);
@@ -433,9 +454,11 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
   const addFloatingText = (x: number, y: number, text: string, color: string, scale = 1) => {
     const id = floatingTextIdRef.current++;
     setFloatingTexts(prev => [...prev, { id, x, y, text, color, scale }]);
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setFloatingTexts(prev => prev.filter(ft => ft.id !== id));
+      floatingTextTimeoutsRef.current.delete(timeoutId);
     }, 1200);
+    floatingTextTimeoutsRef.current.add(timeoutId);
   };
 
   const spawnParticles = (coords: {r: number, c: number, color: string}[]) => {
@@ -546,7 +569,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
       setSelectedShapeIdx(null);
   };
 
-  const executePowerUp = (r: number, c: number) => {
+  const executePowerUp = useCallback((r: number, c: number) => {
     if (!activePowerUp || activePowerUp === 'REFRESH') return;
     if (activePowerUp === 'COLOR' && !grid[r][c]) { triggerShake('light'); return; }
     if (activePowerUp === 'SINGLE' && !grid[r][c]) { triggerShake('light'); return; }
@@ -560,7 +583,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
     let clearedCount = 0;
     const particlesToSpawn: {r: number, c: number, color: string}[] = [];
     const newGrid = grid.map(row => [...row]);
-    
+
     cells.forEach(({r: tr, c: tc}) => {
         if (newGrid[tr][tc]) {
             particlesToSpawn.push({ r: tr, c: tc, color: newGrid[tr][tc]! });
@@ -578,7 +601,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
     setPowerUps(prev => ({...prev, [activePowerUp]: prev[activePowerUp] - 1}));
     setActivePowerUp(null);
     if (rescueMode) setRescueMode(false);
-  };
+  }, [activePowerUp, grid, getPowerUpAffectedCells, rescueMode]);
 
   const handleRotateShape = () => {
     if (selectedShapeIdx === null) return;
@@ -689,6 +712,10 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         setClearingRows(linesToClearRow);
         setClearingCols(linesToClearCol);
         
+        // Store newShapes now to use in the timeout closure
+        const remainingShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
+        const needsNewShapes = remainingShapes.length === 0;
+
         setTimeout(() => {
              const finalGrid = newGrid.map(row => [...row]);
              linesToClearRow.forEach(ri => { for(let ci=0; ci<GRID_SIZE; ci++) finalGrid[ri][ci] = null; });
@@ -696,7 +723,12 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
              setGrid(finalGrid);
              setClearingRows([]);
              setClearingCols([]);
-             checkGameOver(finalGrid, shapes.filter((_, i) => i !== selectedShapeIdx));
+             // Generate new shapes BEFORE checking game over if needed
+             if (needsNewShapes) {
+                 generateShapes();
+             } else {
+                 checkGameOver(finalGrid, remainingShapes);
+             }
         }, 400);
       } else {
         if (streakCount > 0) addFloatingText(c, r, "Streak Brutt!", '#94a3b8', 0.8);
@@ -704,19 +736,24 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         setComboCount(0);
         addFloatingText(c, r, `+${points}`, '#ffffff', 0.8);
         setGrid(newGrid);
-        checkGameOver(newGrid, shapes.filter((_, i) => i !== selectedShapeIdx));
+        const remainingShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
+        if (remainingShapes.length === 0) {
+            // Generate shapes immediately instead of delayed check
+            setTimeout(generateShapes, 300);
+        } else {
+            checkGameOver(newGrid, remainingShapes);
+        }
       }
-      
+
       setScore(prev => prev + points);
       const newShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
       setShapes(newShapes);
       setSelectedShapeIdx(null);
-      if (newShapes.length === 0) setTimeout(generateShapes, 300);
     } else {
         playErrorSound();
         triggerShake('light');
     }
-  }, [isGameOver, rescueMode, activePowerUp, selectedShapeIdx, shapes, grid, canPlaceShape, comboCount, streakCount, powerUps, coins]);
+  }, [isGameOver, rescueMode, activePowerUp, selectedShapeIdx, shapes, grid, canPlaceShape, comboCount, streakCount, powerUps, coins, executePowerUp]);
 
   const checkGameOver = (currentGrid: GridCell[][], currentShapes: Shape[]) => {
       // Clear any existing timeout to prevent double triggers
@@ -796,22 +833,24 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         }, 500);
   };
 
-  const getCellStatus = useCallback((r: number, c: number) => {
+  // Optimized: hoveredCell passed as parameter to reduce function recreation on every hover
+  const getCellStatus = useCallback((r: number, c: number, currentHoveredCell: {r: number, c: number} | null) => {
      if (clearingRows.includes(r) || clearingCols.includes(c)) return 'clearing';
-     if (activePowerUp && activePowerUp !== 'REFRESH' && hoveredCell) {
-        const affected = getPowerUpAffectedCells(hoveredCell.r, hoveredCell.c, activePowerUp);
+     if (activePowerUp && activePowerUp !== 'REFRESH' && currentHoveredCell) {
+        const affected = getPowerUpAffectedCells(currentHoveredCell.r, currentHoveredCell.c, activePowerUp);
         const isAffected = affected.some(p => p.r === r && p.c === c);
         if (isAffected) {
-            if ((activePowerUp === 'COLOR' || activePowerUp === 'SINGLE') && !grid[hoveredCell.r][hoveredCell.c]) return 'empty'; 
+            if ((activePowerUp === 'COLOR' || activePowerUp === 'SINGLE') && !grid[currentHoveredCell.r][currentHoveredCell.c]) return 'empty';
             return 'powerup-target';
         }
      }
-     if (selectedShapeIdx !== null && hoveredCell && !isGameOver) {
+     if (selectedShapeIdx !== null && currentHoveredCell && !isGameOver) {
         const shape = shapes[selectedShapeIdx];
-        const { r: hr, c: hc } = hoveredCell;
+        const { r: hr, c: hc } = currentHoveredCell;
         const rDiff = r - hr;
         const cDiff = c - hc;
-        if (rDiff >= 0 && rDiff < shape.layout.length && cDiff >= 0 && cDiff < shape.layout[0].length) {
+        // Check against actual row length for irregular shapes (e.g., L-shapes)
+        if (rDiff >= 0 && rDiff < shape.layout.length && cDiff >= 0 && cDiff < shape.layout[rDiff].length) {
             if (shape.layout[rDiff][cDiff] === 1) {
                 const valid = canPlaceShape(hr, hc, shape, grid);
                 return valid ? 'ghost-valid' : 'ghost-invalid';
@@ -819,7 +858,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         }
      }
      return grid[r][c] ? 'filled' : 'empty';
-  }, [clearingRows, clearingCols, activePowerUp, hoveredCell, selectedShapeIdx, isGameOver, shapes, grid, canPlaceShape, getPowerUpAffectedCells]);
+  }, [clearingRows, clearingCols, activePowerUp, selectedShapeIdx, isGameOver, shapes, grid, canPlaceShape, getPowerUpAffectedCells]);
 
   return (
     <div className={`w-full h-full flex flex-col items-center justify-start ${shakeType === 'light' ? 'animate-shake' : ''} ${shakeType === 'heavy' ? 'animate-shake-heavy' : ''}`}>
