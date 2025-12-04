@@ -3,7 +3,8 @@ import { MonsterCard, AppState, Rarity } from '../types';
 import { generateBoosterPack, generateCardArt } from '../services/geminiService';
 import { RARITY_COLORS, RARITY_TRANSLATIONS } from '../constants';
 import CardComponent from './CardComponent';
-import { playHardClick, playHoverSound, playMagicalSparkle, playCardWhoosh, playErrorSound, playSuccessSound, playSoftClick } from '../utils/audio';
+import { playHoverSound, playMagicalSparkle, playCardWhoosh, playErrorSound, playSuccessSound, playSoftClick } from '../utils/audio';
+import { ECONOMY_CONFIG } from '../config/gameConfig';
 
 interface PackOpenerProps {
   coins: number;
@@ -12,7 +13,7 @@ interface PackOpenerProps {
   onImageSaved?: (id: string) => void;
 }
 
-const PACK_COST = 100;
+const PACK_COST = ECONOMY_CONFIG.PACK_COST;
 
 const PackOpener: React.FC<PackOpenerProps> = ({ coins, deductCoins, onCardsRevealed, onImageSaved }) => {
   const [appState, setAppState] = useState<AppState>('IDLE');

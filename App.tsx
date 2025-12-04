@@ -8,20 +8,11 @@ import { ViewState, MonsterCard } from './types';
 import { playSoftClick, playSwitchSound, playSuccessSound, playMagicalSparkle, playPopSound, resumeAudioContext, musicManager } from './utils/audio';
 import { storageService } from './services/storageService';
 import { MELD_REWARDS } from './constants';
-
-// XP Curve Configuration - Optimized for gratification
-const BASE_XP = 200; 
-const XP_GROWTH = 1.4;
-
-const getXpForNextLevel = (level: number) => {
-  return Math.floor(BASE_XP * Math.pow(level, XP_GROWTH));
-};
-
-const DAILY_REWARDS = [50, 100, 150, 200, 250, 300, 500];
+import { getXpForNextLevel, DAILY_REWARDS, ECONOMY_CONFIG } from './config/gameConfig';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('GAME');
-  const [coins, setCoins] = useState<number>(300);
+  const [coins, setCoins] = useState<number>(ECONOMY_CONFIG.STARTING_COINS);
   const [level, setLevel] = useState<number>(1);
   const [currentXP, setCurrentXP] = useState<number>(0);
   const [inventory, setInventory] = useState<MonsterCard[]>([]);
@@ -155,6 +146,7 @@ const App: React.FC = () => {
       if (currentXP < prevXpRef.current) {
           prevXpRef.current = currentXP;
       }
+      return undefined; // Explicit return for useEffect
   }, [currentXP]);
 
   const toggleMusic = () => {
@@ -192,7 +184,7 @@ const App: React.FC = () => {
       tempXP -= getXpForNextLevel(tempLevel);
       tempLevel++;
       leveledUp = true;
-      const reward = tempLevel * 50 + 100;
+      const reward = tempLevel * ECONOMY_CONFIG.LEVEL_UP_COIN_MULTIPLIER + ECONOMY_CONFIG.LEVEL_UP_COIN_BASE;
       totalReward += reward;
     }
 
@@ -231,7 +223,7 @@ const App: React.FC = () => {
       
       // Add a massive starter bonus
       setTimeout(() => {
-          addCoins(1000); 
+          addCoins(ECONOMY_CONFIG.INTRO_GIFT_COINS);
           setShowIntroGift(false);
           playMagicalSparkle();
       }, 2000);

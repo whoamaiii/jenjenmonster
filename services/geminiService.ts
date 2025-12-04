@@ -405,8 +405,8 @@ export const generateCardArt = async (
     const parts = response.candidates?.[0]?.content?.parts;
     if (parts) {
       for (const part of parts) {
-        if (part.inlineData) {
-          const base64ImageBytes: string = part.inlineData.data;
+        if (part.inlineData?.data) {
+          const base64ImageBytes = part.inlineData.data;
           return `data:image/jpeg;base64,${base64ImageBytes}`;
         }
       }
@@ -471,8 +471,8 @@ export const editCardArt = async (
     const parts = response.candidates?.[0]?.content?.parts;
     if (parts) {
       for (const part of parts) {
-        if (part.inlineData) {
-          const base64ImageBytes: string = part.inlineData.data;
+        if (part.inlineData?.data) {
+          const base64ImageBytes = part.inlineData.data;
           return `data:image/jpeg;base64,${base64ImageBytes}`;
         }
       }

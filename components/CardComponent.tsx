@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { MonsterCard, ElementType, Rarity } from '../types';
-import { ELEMENT_COLORS, ELEMENT_ICONS, RARITY_COLORS, RARITY_TRANSLATIONS } from '../constants';
+import { ELEMENT_ICONS, RARITY_COLORS, RARITY_TRANSLATIONS } from '../constants';
 import { generateCardArt, editCardArt } from '../services/geminiService';
 import { storageService } from '../services/storageService';
 import { playFlipSound } from '../utils/audio';
@@ -136,7 +136,7 @@ const CardComponent: React.FC<CardProps> = ({ card, index, isRevealed, preloaded
           rays: Array.from({ length: 12 }, (_, i) => ({ 
               rot: i * 30 
           })),
-          dots: Array.from({ length: 20 }, (_, i) => ({
+          dots: Array.from({ length: 20 }, () => ({
               tx: (Math.random() - 0.5) * 250,
               ty: (Math.random() - 0.5) * 250,
               color: ['#FFD700', '#FF69B4', '#00FFFF', '#FFF'][Math.floor(Math.random()*4)],
@@ -164,6 +164,7 @@ const CardComponent: React.FC<CardProps> = ({ card, index, isRevealed, preloaded
       };
     } else {
       setShowBurst(false);
+      return undefined;
     }
   }, [isRevealed, card.isShiny, startFlipped, index]);
 
@@ -171,8 +172,8 @@ const CardComponent: React.FC<CardProps> = ({ card, index, isRevealed, preloaded
   // Added debouncing to prevent thrashing during fast scrolls
   useEffect(() => {
     let mounted = true;
-    let loadDebounceTimer: ReturnType<typeof setTimeout>;
-    let unloadDebounceTimer: ReturnType<typeof setTimeout>;
+    let loadDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+    let unloadDebounceTimer: ReturnType<typeof setTimeout> | undefined;
     
     const loadOrGenerate = async () => {
       // Logic for unloading when off-screen to save RAM
