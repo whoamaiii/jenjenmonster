@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MonsterCard, Rarity, ElementType, SortOption, SavedLayout, FilterOption } from '../types';
 import CardComponent from './CardComponent';
 import { RARITY_COLORS, RARITY_TRANSLATIONS, MELD_REWARDS, ELEMENT_ICONS } from '../constants';

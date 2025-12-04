@@ -163,7 +163,9 @@ export const storageService = {
           if (cardToSave.imageUrl && cardToSave.imageUrl !== 'stored' && cardToSave.imageUrl.startsWith('data:image')) {
               try {
                   cardToSave.imageUrl = await compressImage(cardToSave.imageUrl);
-              } catch (e) { /* ignore error and save original */ }
+              } catch (e) {
+                  console.warn('[StorageService] Image compression failed, saving original:', e);
+              }
           }
           return cardToSave;
       }));
@@ -289,7 +291,10 @@ export const storageService = {
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => resolve(null);
         });
-    } catch { return null; }
+    } catch (e) {
+        console.error('[StorageService] Failed to load power-ups:', e);
+        return null;
+    }
   },
 
   async saveGameSession(session: SavedGameSession) {
@@ -309,7 +314,10 @@ export const storageService = {
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => resolve(null);
         });
-    } catch { return null; }
+    } catch (e) {
+        console.error('[StorageService] Failed to load game session:', e);
+        return null;
+    }
   },
 
   async clearGameSession() {
@@ -348,7 +356,10 @@ export const storageService = {
     try {
       const saved = localStorage.getItem('jenjen_favorites');
       return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
+    } catch (e) {
+      console.warn('[StorageService] Failed to parse favorites, resetting:', e);
+      return [];
+    }
   },
 
   saveLastViewedTime(timestamp: number) {
@@ -379,7 +390,10 @@ export const storageService = {
     try {
       const saved = localStorage.getItem('jenjen_daily_reward');
       return saved ? JSON.parse(saved) : { lastClaimDate: 0, streak: 0 };
-    } catch { return { lastClaimDate: 0, streak: 0 }; }
+    } catch (e) {
+      console.warn('[StorageService] Failed to parse daily reward, resetting:', e);
+      return { lastClaimDate: 0, streak: 0 };
+    }
   },
 
   // --- MUSIC PREFERENCE ---
@@ -412,6 +426,9 @@ export const storageService = {
     try {
       const saved = localStorage.getItem('jenjen_collection_layouts');
       return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
+    } catch (e) {
+      console.warn('[StorageService] Failed to parse collection layouts, resetting:', e);
+      return [];
+    }
   }
 };

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
-import { GridCell, Shape, ShapeLayout, FloatingText, Particle, PowerUpType, SavedGameSession } from '../types';
-import { playMagicalSparkle, playHoverSound, playHardClick, playSoftClick, playPopSound, playErrorSound, playSuccessSound } from '../utils/audio';
+import { GridCell, Shape, ShapeLayout, FloatingText, Particle, PowerUpType } from '../types';
+import { playMagicalSparkle, playHardClick, playSoftClick, playPopSound, playErrorSound, playSuccessSound } from '../utils/audio';
 import { storageService } from '../services/storageService';
+import { BLOCK_GAME_CONFIG, POWER_UP_COSTS, PARTICLE_CONFIG, ANIMATION_CONFIG, ECONOMY_CONFIG } from '../config/gameConfig';
 
-const GRID_SIZE = 8;
+const GRID_SIZE = BLOCK_GAME_CONFIG.GRID_SIZE;
 // Christmas Palette: Santa Red, Pine Green, Gold, Ice Blue, Royal Purple
 const COLORS = [
   '#ef4444', // Red
@@ -43,13 +44,7 @@ const SHAPES_TEMPLATES: { layout: ShapeLayout, id: string, difficulty: 'EASY' | 
   { id: 'BigL', layout: [[1,0,0],[1,0,0],[1,1,1]], difficulty: 'HARD' }
 ];
 
-const POWER_UP_COSTS: Record<PowerUpType, number> = {
-    BOMB: 100,
-    LINE: 80,
-    COLOR: 120,
-    SINGLE: 50,
-    REFRESH: 25
-};
+// POWER_UP_COSTS imported from gameConfig
 
 // Helper: Rotate Matrix 90deg Clockwise
 const rotateLayout = (layout: ShapeLayout): ShapeLayout => {
@@ -76,7 +71,7 @@ interface GridProps {
   activePowerUp: PowerUpType | null;
 }
 
-const MemoizedGrid = memo(({ grid, onHover, onClick, getCellStatus, selectedShape, hoveredCell, activePowerUp }: GridProps) => {
+const MemoizedGrid = memo(({ grid, onHover, onClick, getCellStatus, selectedShape, hoveredCell }: GridProps) => {
     return (
         <div className="grid grid-cols-8 gap-1 w-full h-full relative z-10">
           {grid.map((row, r) => (
@@ -272,7 +267,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
 
   // Periodic Save (30s) and Visibility Change
   useEffect(() => {
-      const interval = setInterval(saveState, 30000); 
+      const interval = setInterval(saveState, BLOCK_GAME_CONFIG.AUTO_SAVE_INTERVAL); 
 
       const handleVisibilityChange = () => {
           if (document.visibilityState === 'hidden') {
@@ -322,18 +317,19 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
     if (isGameOver) {
         // Start Sequence
         setGameOverPhase(1); // Title
-        
-        const t1 = setTimeout(() => setGameOverPhase(2), 600); // Score Count
-        const t2 = setTimeout(() => setGameOverPhase(3), 1800); // XP
-        const t3 = setTimeout(() => setGameOverPhase(4), 3000); // Coins
-        const t4 = setTimeout(() => setGameOverPhase(5), 4200); // Buttons
-        
+
+        const t1 = setTimeout(() => setGameOverPhase(2), ANIMATION_CONFIG.GAME_OVER_PHASES.SCORE_DELAY); // Score Count
+        const t2 = setTimeout(() => setGameOverPhase(3), ANIMATION_CONFIG.GAME_OVER_PHASES.XP_DELAY); // XP
+        const t3 = setTimeout(() => setGameOverPhase(4), ANIMATION_CONFIG.GAME_OVER_PHASES.COINS_DELAY); // Coins
+        const t4 = setTimeout(() => setGameOverPhase(5), ANIMATION_CONFIG.GAME_OVER_PHASES.BUTTONS_DELAY); // Buttons
+
         return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
     } else {
         setGameOverPhase(0);
         setDisplayScore(0);
         setDisplayCoins(0);
         setDisplayXP(0);
+        return undefined;
     }
   }, [isGameOver]);
 
@@ -358,17 +354,17 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
 
     if (gameOverPhase === 2 && score > 0 && displayScore === 0) {
          playMagicalSparkle();
-         countUp(0, score, setDisplayScore, 1000);
+         countUp(0, score, setDisplayScore, ANIMATION_CONFIG.SCORE_COUNT_DURATION);
     }
     
     if (gameOverPhase === 3 && score > 0 && displayXP === 0) {
          playSuccessSound();
-         countUp(0, score, setDisplayXP, 1000);
+         countUp(0, score, setDisplayXP, ANIMATION_CONFIG.SCORE_COUNT_DURATION);
     }
     
     if (gameOverPhase === 4 && earnedCoins > 0 && displayCoins === 0) {
          playPopSound();
-         countUp(0, earnedCoins, setDisplayCoins, 1000);
+         countUp(0, earnedCoins, setDisplayCoins, ANIMATION_CONFIG.SCORE_COUNT_DURATION);
     }
 
   }, [gameOverPhase, isGameOver, score, earnedCoins, displayScore, displayXP, displayCoins]);
@@ -417,7 +413,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         setParticles(prev => {
             if (prev.length === 0) return prev;
             const now = Date.now();
-            const filtered = prev.filter(p => p.createdAt ? (now - p.createdAt < 1000) : false);
+            const filtered = prev.filter(p => p.createdAt ? (now - p.createdAt < PARTICLE_CONFIG.PARTICLE_LIFETIME) : false);
             return filtered.length !== prev.length ? filtered : prev;
         });
     }, 500);
@@ -465,7 +461,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
     const newParticles: Particle[] = [];
     const now = Date.now();
     coords.forEach(({r, c, color}) => {
-        const particleCount = 6; 
+        const particleCount = PARTICLE_CONFIG.PARTICLES_PER_CELL; 
         for(let i=0; i<particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
             const velocity = Math.random() * 80 + 40; 
@@ -486,7 +482,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
     });
     setParticles(prev => {
         const next = [...prev, ...newParticles];
-        if (next.length > 100) return next.slice(next.length - 100);
+        if (next.length > PARTICLE_CONFIG.MAX_PARTICLES) return next.slice(next.length - PARTICLE_CONFIG.MAX_PARTICLES);
         return next;
     });
   };
@@ -628,7 +624,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
     }
     setShapes(newShapes);
     setSelectedShapeIdx(null);
-    if (newShapes.length === 0) setTimeout(generateShapes, 300);
+    if (newShapes.length === 0) setTimeout(generateShapes, BLOCK_GAME_CONFIG.SHAPE_GENERATION_DELAY);
   };
 
   const canPlaceShape = useCallback((r: number, c: number, shape: Shape, currentGrid: GridCell[][]): boolean => {
@@ -683,7 +679,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         setStreakCount(newStreak);
 
         // INCREASED SCORE PER LINE TO IMPROVE COIN PROGRESSION
-        let linePoints = totalLines * 150; 
+        let linePoints = totalLines * BLOCK_GAME_CONFIG.POINTS_PER_LINE; 
         const multiLineMultiplier = totalLines > 3 ? 3 : (totalLines > 1 ? totalLines * 0.8 : 1);
         const comboMultiplier = 1 + (newCombo * 0.2);
         const streakMultiplier = 1 + (newStreak * 0.1);
@@ -711,10 +707,16 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         
         setClearingRows(linesToClearRow);
         setClearingCols(linesToClearCol);
-        
-        // Store newShapes now to use in the timeout closure
+
+        // CRITICAL FIX: Calculate remaining shapes and set state BEFORE setTimeout
+        // This prevents race conditions where the closure captures stale state
         const remainingShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
         const needsNewShapes = remainingShapes.length === 0;
+
+        // Update shapes state immediately to prevent race condition
+        setShapes(remainingShapes);
+        setScore(prev => prev + points);
+        setSelectedShapeIdx(null);
 
         setTimeout(() => {
              const finalGrid = newGrid.map(row => [...row]);
@@ -726,10 +728,12 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
              // Generate new shapes BEFORE checking game over if needed
              if (needsNewShapes) {
                  generateShapes();
-             } else {
-                 checkGameOver(finalGrid, remainingShapes);
              }
-        }, 400);
+             // Note: Game over check is now handled by useEffect watching shapes/grid changes
+        }, BLOCK_GAME_CONFIG.CLEAR_ANIMATION_DELAY);
+
+        // Early return since we already updated state above
+        return;
       } else {
         if (streakCount > 0) addFloatingText(c, r, "Streak Brutt!", '#94a3b8', 0.8);
         setStreakCount(0);
@@ -737,23 +741,24 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
         addFloatingText(c, r, `+${points}`, '#ffffff', 0.8);
         setGrid(newGrid);
         const remainingShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
+
+        // Update state before any async operations
+        setShapes(remainingShapes);
+        setScore(prev => prev + points);
+        setSelectedShapeIdx(null);
+
         if (remainingShapes.length === 0) {
             // Generate shapes immediately instead of delayed check
-            setTimeout(generateShapes, 300);
-        } else {
-            checkGameOver(newGrid, remainingShapes);
+            setTimeout(generateShapes, BLOCK_GAME_CONFIG.SHAPE_GENERATION_DELAY);
         }
+        // Note: Game over check handled by useEffect
+        return;
       }
-
-      setScore(prev => prev + points);
-      const newShapes = shapes.filter((_, i) => i !== selectedShapeIdx);
-      setShapes(newShapes);
-      setSelectedShapeIdx(null);
     } else {
         playErrorSound();
         triggerShake('light');
     }
-  }, [isGameOver, rescueMode, activePowerUp, selectedShapeIdx, shapes, grid, canPlaceShape, comboCount, streakCount, executePowerUp]);
+  }, [isGameOver, rescueMode, activePowerUp, selectedShapeIdx, shapes, grid, canPlaceShape, comboCount, streakCount, executePowerUp, generateShapes]);
 
   const checkGameOver = (currentGrid: GridCell[][], currentShapes: Shape[]) => {
       // Clear any existing timeout to prevent double triggers
@@ -785,9 +790,9 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
                 return false;
              };
 
-             let canMove = false;
-             for(const s of currentShapes) if(canFitShapeWithRotation(s, currentGrid)) canMove = true;
-             if (!canMove && holdShape) if(canFitShapeWithRotation(holdShape, currentGrid)) canMove = true;
+             // OPTIMIZED: Use Array.some() for early exit when a valid move is found
+             const canMove = currentShapes.some(s => canFitShapeWithRotation(s, currentGrid))
+                          || (holdShape ? canFitShapeWithRotation(holdShape, currentGrid) : false);
 
              if(!canMove) {
                  const hasPowerUps = Object.values(powerUps).some((val: number) => val > 0);
@@ -798,17 +803,17 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
                      playErrorSound();
                      addFloatingText(3, 3, "STUCK! KJØP GAVE!", '#F87171', 1.5);
                  } else {
-                     storageService.clearGameSession(); 
-                     const earned = Math.floor(score / 10);
+                     storageService.clearGameSession();
+                     const earned = Math.floor(score / ECONOMY_CONFIG.SCORE_TO_COINS_DIVISOR);
                      setEarnedCoins(earned);
                      setIsGameOver(true);
                      onGameOver(score);
                      
                      // Confetti Explosion
                      const confettiColors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f', '#0ff'];
-                     const newParticles = [];
+                     const newParticles: Particle[] = [];
                      const now = Date.now();
-                     for(let i=0; i<50; i++) {
+                     for(let i=0; i<PARTICLE_CONFIG.GAME_OVER_CONFETTI_COUNT; i++) {
                         const angle = Math.random() * Math.PI * 2;
                         const velocity = Math.random() * 200 + 100;
                         newParticles.push({
@@ -830,7 +835,7 @@ const BlockGame: React.FC<GameProps> = ({ onGameOver, isActive, coins, deductCoi
              } else {
                  setRescueMode(false);
              }
-        }, 500);
+        }, BLOCK_GAME_CONFIG.GAME_OVER_CHECK_DELAY);
   };
 
   // Optimized: hoveredCell passed as parameter to reduce function recreation on every hover

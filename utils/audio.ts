@@ -60,22 +60,27 @@ const playTone = (
     osc.start();
     osc.stop(ctx.currentTime + duration);
 
-    // cleanup with safety timeout
+    // cleanup with safety timeout - errors expected if nodes already disconnected
     const cleanup = () => {
         try {
             osc.disconnect();
             gain.disconnect();
-        } catch(e) {
-            // ignore if already disconnected
+        } catch {
+            // Expected: nodes may already be disconnected
         }
     };
     
     osc.onended = cleanup;
-    
+
     // Backup cleanup in case onended doesn't fire (e.g. tab backgrounded)
     setTimeout(cleanup, (duration * 1000) + 100);
 
-  } catch (e) {}
+  } catch (e) {
+    // Audio errors are expected (e.g., autoplay blocked), log only in dev
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[Audio] playTone error (may be expected):', e);
+    }
+  }
 };
 
 // --- MUSIC MANAGER FOR BACKGROUND LOOP ---
@@ -165,13 +170,15 @@ class MusicManager {
     osc2.start(time);
     osc2.stop(time + 2.5);
 
-    // Cleanup
+    // Cleanup - errors expected if nodes already disconnected
     const cleanup = () => {
         try {
             osc.disconnect();
             osc2.disconnect();
             gain.disconnect();
-        } catch(e) {}
+        } catch {
+            // Expected: nodes may already be disconnected
+        }
     };
 
     osc.onended = cleanup;
@@ -306,11 +313,18 @@ export const playMagicalSparkle = () => {
                 try {
                     osc.disconnect();
                     gain.disconnect();
-                } catch(e) {}
+                } catch {
+                    // Expected: nodes may already be disconnected
+                }
             };
-            
+
             osc.onended = cleanup;
             setTimeout(cleanup, 2000);
         });
-    } catch (e) {}
+    } catch (e) {
+        // Audio errors are expected (e.g., autoplay blocked), log only in dev
+        if (process.env.NODE_ENV !== 'production') {
+            console.debug('[Audio] playMagicalSparkle error (may be expected):', e);
+        }
+    }
 }
