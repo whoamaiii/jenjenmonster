@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { MonsterCard, Rarity, ElementType } from '../types';
+import { MonsterCard, Rarity, ElementType, SortOption, SavedLayout, FilterOption } from '../types';
 import CardComponent from './CardComponent';
 import { RARITY_COLORS, RARITY_TRANSLATIONS, MELD_REWARDS, ELEMENT_ICONS } from '../constants';
 import { playSoftClick, playPopSound, playSwitchSound, playSuccessSound } from '../utils/audio';
@@ -10,15 +10,6 @@ interface CollectionProps {
   onMeld: (card: MonsterCard) => void;
   onImageSaved?: (id: string) => void;
   isActive: boolean;
-}
-
-type SortOption = 'NEWEST' | 'OLDEST' | 'RARITY_DESC' | 'RARITY_ASC' | 'NAME_ASC' | 'NAME_DESC' | 'FAVORITES';
-
-interface SavedLayout {
-  id: string;
-  name: string;
-  filter: ElementType | Rarity | 'ALL' | 'FAVORITES' | 'NEW';
-  sort: SortOption;
 }
 
 const RARITY_WEIGHTS: Record<Rarity, number> = {
@@ -32,7 +23,7 @@ const RARITY_WEIGHTS: Record<Rarity, number> = {
 const Collection: React.FC<CollectionProps> = ({ cards, onMeld, onImageSaved, isActive }) => {
   const [selectedCard, setSelectedCard] = useState<MonsterCard | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('NEWEST');
-  const [activeFilter, setActiveFilter] = useState<ElementType | Rarity | 'ALL' | 'FAVORITES' | 'NEW'>('ALL');
+  const [activeFilter, setActiveFilter] = useState<FilterOption>('ALL');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   
   // Layout State
@@ -60,7 +51,7 @@ const Collection: React.FC<CollectionProps> = ({ cards, onMeld, onImageSaved, is
 
   // Virtual Scroll: Attach listener to the main scrollable container
   useEffect(() => {
-      const scrollContainer = document.querySelector('main');
+      const scrollContainer = document.querySelector('[data-scroll-container]') as HTMLElement | null;
       if (!scrollContainer) return;
 
       const handleScroll = () => {
@@ -144,11 +135,11 @@ const Collection: React.FC<CollectionProps> = ({ cards, onMeld, onImageSaved, is
     });
   };
 
-  const handleFilterChange = (type: ElementType | Rarity | 'ALL' | 'FAVORITES' | 'NEW') => {
+  const handleFilterChange = (type: FilterOption) => {
       playSwitchSound();
       setActiveFilter(type);
       // Reset scroll to top
-      const scrollContainer = document.querySelector('main');
+      const scrollContainer = document.querySelector('[data-scroll-container]');
       if (scrollContainer) scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

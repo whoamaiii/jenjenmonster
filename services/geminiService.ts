@@ -225,7 +225,7 @@ export const generateCardArt = async (visualPrompt: string, cardName: string, ty
     const specificStyle = `${typeModifiers[type] || "magical atmosphere"} combined with ${rarityModifiers[rarity] || "high quality"}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: {
         parts: [
           {
@@ -284,7 +284,7 @@ export const editCardArt = async (currentImageBase64: string, editPrompt: string
     if (!base64Data) throw new Error("Invalid base64 string");
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-2.0-flash-exp',
       contents: {
         parts: [
           {
